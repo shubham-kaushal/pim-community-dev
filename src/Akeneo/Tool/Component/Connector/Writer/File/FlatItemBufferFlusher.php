@@ -77,12 +77,21 @@ class FlatItemBufferFlusher implements StepExecutionAwareInterface
         $writtenFiles = [];
 
         $headers = $this->sortHeaders($buffer->getHeaders());
+
+        if ($this->headerAreTranslated()) {
+            $headers = array_flip($this->formatTranslatedHeader(array_flip($headers)));
+        }
+
         $hollowItem = array_fill_keys($headers, '');
 
         $writer = $this->getWriter($filePath, $writerOptions);
         $writer->addRow($headers);
 
         foreach ($buffer as $incompleteItem) {
+            if ($this->headerAreTranslated()) {
+                $incompleteItem = $this->formatTranslatedHeader($incompleteItem);
+            }
+
             $item = array_replace($hollowItem, $incompleteItem);
             $writer->addRow($item);
 
@@ -117,6 +126,10 @@ class FlatItemBufferFlusher implements StepExecutionAwareInterface
         $fileCount = 1;
 
         $headers = $this->sortHeaders($buffer->getHeaders());
+        if ($this->headerAreTranslated()) {
+            $headers = array_flip($this->formatTranslatedHeader(array_flip($headers)));
+        }
+
         $hollowItem = array_fill_keys($headers, '');
 
         foreach ($buffer as $count => $incompleteItem) {
@@ -130,6 +143,10 @@ class FlatItemBufferFlusher implements StepExecutionAwareInterface
                 $writtenLinesCount = 0;
                 $writer = $this->getWriter($filePath, $writerOptions);
                 $writer->addRow($headers);
+            }
+
+            if ($this->headerAreTranslated()) {
+                $incompleteItem = $this->formatTranslatedHeader($incompleteItem);
             }
 
             $item = array_replace($hollowItem, $incompleteItem);
@@ -265,5 +282,37 @@ class FlatItemBufferFlusher implements StepExecutionAwareInterface
         $writer->openToFile($filePath);
 
         return $writer;
+    }
+
+    private function formatTranslatedHeader(array $incompleteItem): array
+    {
+        $descriptions = [];
+        foreach ($incompleteItem as $columnName => $value) {
+            list($code, $description) = explode('--', $columnName, 2);
+            $descriptions[] = $description;
+        }
+
+        $duplicatedDescriptions = array_unique(array_diff_assoc($descriptions, array_unique($descriptions)));
+
+        $result = [];
+        foreach ($incompleteItem as $columnName => $value) {
+            list($code, $description) = explode('--', $columnName, 2);
+            if (!in_array($description, $duplicatedDescriptions)) {
+                $columnName = $description;
+            }
+
+            $result[$columnName] = $value;
+        }
+
+        return $result;
+    }
+
+    private function headerAreTranslated(): bool
+    {
+        return
+            $this->stepExecution->getJobParameters()->has('with_label') &&
+            $this->stepExecution->getJobParameters()->get('with_label') &&
+            $this->stepExecution->getJobParameters()->has('header_with_label') &&
+            $this->stepExecution->getJobParameters()->get('header_with_label');
     }
 }
