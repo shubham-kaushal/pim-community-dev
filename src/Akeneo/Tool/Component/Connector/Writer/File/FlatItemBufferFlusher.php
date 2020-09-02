@@ -286,19 +286,19 @@ class FlatItemBufferFlusher implements StepExecutionAwareInterface
 
     private function formatTranslatedHeader(array $incompleteItem): array
     {
-        $descriptions = [];
+        $columnTranslations = [];
         foreach ($incompleteItem as $columnName => $value) {
-            list($code, $description) = explode('--', $columnName, 2);
-            $descriptions[] = $description;
+            list(, $columnTranslation) = explode('--', $columnName, 2);
+            $columnTranslations[] = $columnTranslation;
         }
 
-        $duplicatedDescriptions = array_unique(array_diff_assoc($descriptions, array_unique($descriptions)));
+        $duplicatedDescriptions = array_unique(array_diff_assoc($columnTranslations, array_unique($columnTranslations)));
 
         $result = [];
         foreach ($incompleteItem as $columnName => $value) {
-            list($code, $description) = explode('--', $columnName, 2);
-            if (!in_array($description, $duplicatedDescriptions)) {
-                $columnName = $description;
+            list(, $columnTranslation) = explode('--', $columnName, 2);
+            if (!in_array($columnTranslation, $duplicatedDescriptions)) {
+                $columnName = $columnTranslation;
             }
 
             $result[$columnName] = $value;
